@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Language Recognition</title>
+    <style>
+        body { text-align: center; font-family: Arial, sans-serif; }
+        button { padding: 15px; margin: 10px; font-size: 16px; cursor: pointer; }
+        img { border: 2px solid black; width: 50%; }
+    </style>
+</head>
+<body>
+    <h1>Sign Language Recognition</h1>
+    <img id="video-stream" src="{{ url_for('video_feed') }}">
+    <br>
+    <button onclick="startRecognition()">Start Recognition</button>
+    <button onclick="stopRecognition()">Stop Recognition</button>
+
+    <script>
+        function startRecognition() {
+            fetch('/start').then(response => response.json()).then(data => console.log(data));
+        }
+
+        function stopRecognition() {
+            fetch('/stop').then(response => response.json()).then(data => console.log(data));
+        }
+    </script>
+</body>
+</html>
