@@ -2,9 +2,10 @@ import pickle
 import cv2
 import mediapipe as mp
 import numpy as np
+import matplotlib.pyplot as plt
 
 # Load the trained model from a pickle file
-model_dict = pickle.load(open('model.p', 'rb'))
+model_dict = pickle.load(open('./model.p', 'rb'))
 model = model_dict['model']
 
 # Initialize video capture from the default camera
@@ -20,6 +21,11 @@ hands = mp_hands.Hands(static_image_mode=True, min_detection_confidence=0.3)
 
 # Dictionary to map model predictions to labels
 labels_dict = {0: 'A', 1: 'B', 2: 'C', 3: 'D', 4: 'E', 5: 'F', 6: 'L'}
+target_label = 0  # Target class index for "A"
+
+loss_values = []
+
+print("Press 'q' to stop capturing and plot the loss graph.")
 
 while True:
     data_aux = []  # Auxiliary data for model prediction
@@ -38,15 +44,6 @@ while True:
     # Process the frame to detect hand landmarks
     results = hands.process(frame_rgb)
     if results.multi_hand_landmarks:
-        # Draw hand landmarks on the frame
-        for hand_landmarks in results.multi_hand_landmarks:
-            mp_drawing.draw_landmarks(
-                frame,  # Image to draw on
-                hand_landmarks,  # Hand landmarks
-                mp_hands.HAND_CONNECTIONS,  # Hand connections
-                mp_drawing_styles.get_default_hand_landmarks_style(),
-                mp_drawing_styles.get_default_hand_connections_style())
-
         # Extract landmark coordinates
         for hand_landmarks in results.multi_hand_landmarks:
             for i in range(len(hand_landmarks.landmark)):
@@ -67,24 +64,36 @@ while True:
         if len(data_aux) == 42:
             data_aux = np.concatenate([data_aux, data_aux])  # Duplicate the features to match the expected input size
 
-        # Calculate bounding box coordinates
-        x1 = int(min(x_) * W) - 10
-        y1 = int(min(y_) * H) - 10
-        x2 = int(max(x_) * W) - 10
-        y2 = int(max(y_) * H) - 10
+        # Predict the probabilities using the model
+        prediction_probabilities = model.predict_proba([np.asarray(data_aux)])[0]
 
-        # Predict the character using the model
-        prediction = model.predict([np.asarray(data_aux)])
-        predicted_character = labels_dict[int(prediction[0])]
+        # Calculate the loss for the target label
+        real_value = 1 if target_label == np.argmax(prediction_probabilities) else 0
+        predicted_value = prediction_probabilities[target_label]
+        loss = (real_value - predicted_value) ** 2
+        loss_values.append(loss)
 
-        # Draw bounding box and predicted character on the frame
-        cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 0, 0), 4)
-        cv2.putText(frame, predicted_character, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 1.3, (0, 0, 0), 3, cv2.LINE_AA)
+        # Display information on the frame
+        cv2.putText(frame, f"Loss: {loss:.4f}", (10, 30),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
 
-    # Display the frame
+    # Show the frame
     cv2.imshow('frame', frame)
-    cv2.waitKey(1)
+
+    # Break the loop on 'q' key press
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
 
 # Release the video capture and close all OpenCV windows
 cap.release()
 cv2.destroyAllWindows()
+
+# Plot the loss graph
+plt.figure(figsize=(10, 6))
+plt.plot(loss_values, color='gray', label='Loss')
+plt.xlabel('Iteration')
+plt.ylabel('Loss')
+plt.title('Loss Function Over Iterations')
+plt.legend()
+plt.grid(True)
+plt.show()

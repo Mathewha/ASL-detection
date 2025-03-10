@@ -13,7 +13,7 @@ mp_drawing_styles = mp.solutions.drawing_styles
 # Initialize the MediaPipe Hands object
 hands = mp_hands.Hands(static_image_mode=True, min_detection_confidence=0.3)
 
-DATA_DIR = 'data'
+DATA_DIR = './data'
 
 # lists to store processed data and labels
 data = []
